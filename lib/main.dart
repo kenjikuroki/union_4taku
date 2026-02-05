@@ -9,7 +9,11 @@ import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'widgets/ad_banner.dart';
+import 'widgets/ad_banner.dart';
 import 'utils/ad_manager.dart';
+import 'utils/purchase_manager.dart';
+import 'widgets/premium_unlock_card.dart';
+import 'widgets/special_offer_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 
@@ -224,8 +228,11 @@ class _HomePageState extends State<HomePage> {
 
     // 3. Initialize Ads
     await MobileAds.instance.initialize();
+
+    // 4. Initialize PurchaseManager
+    await PurchaseManager.instance.init();
     
-    // 4. Preload Ads
+    // 5. Preload Ads
     AdManager.instance.preloadAd('quiz');
 
     await QuizData.load();
@@ -404,6 +411,9 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
+
+
+
                   // Part 1: 貨物自動車運送事業法
                   _MenuButton(
                     title: "貨物自動車運送事業法",
@@ -468,69 +478,99 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 24),
                   
                   // Sister App Referral Card
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: PurchaseManager.instance.isPremiumNotifier,
+                    builder: (context, isPremium, child) {
+                      if (isPremium) return const SizedBox.shrink();
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1), width: 1),
                         ),
-                      ],
-                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1), width: 1),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => _showReferralDialog(context),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.blueAccent.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.touch_app, color: Colors.blueAccent, size: 32),
-                              ),
-                              const SizedBox(width: 16),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "スワイプ形式で高速学習",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showReferralDialog(context),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      "サクサク解ける\n姉妹アプリはこちら",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        height: 1.3,
-                                      ),
+                                    child: const Icon(Icons.touch_app, color: Colors.blueAccent, size: 32),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "スワイプ形式で高速学習",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          "サクサク解ける\n姉妹アプリはこちら",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const Icon(Icons.open_in_new, color: Colors.grey),
+                                ],
                               ),
-                              const Icon(Icons.open_in_new, color: Colors.grey),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Premium Card & Restore Button
+                  ValueListenableBuilder<bool>(
+                    valueListenable: PurchaseManager.instance.isPremiumNotifier,
+                    builder: (context, isPremium, child) {
+                      if (isPremium) return const SizedBox.shrink();
+                      return Column(
+                        children: [
+                          const PremiumUnlockCard(),
+                          TextButton(
+                            onPressed: () async {
+                              await PurchaseManager.instance.restorePurchases();
+                            },
+                            child: const Text(
+                              "購入を復元する",
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 40),
                 ],
@@ -780,14 +820,45 @@ class _QuizPageState extends State<QuizPage> {
         AdManager.instance.showInterstitial(
           onComplete: () {
             if (mounted) {
-              _navigateToResult();
+              _checkAndShowSpecialOffer().then((_) {
+                 if (mounted) _navigateToResult();
+              });
             }
           },
         );
       } else {
-        _navigateToResult();
+        await _checkAndShowSpecialOffer();
+        if (mounted) {
+          _navigateToResult();
+        }
       }
     }
+  }
+
+  Future<void> _checkAndShowSpecialOffer() async {
+    // 1. Check if premium
+    if (PurchaseManager.instance.isPremium) return;
+
+    // 2. Check date limit (2026-03-01)
+    final limitDate = DateTime(2026, 3, 1);
+    if (DateTime.now().isAfter(limitDate)) return;
+
+    // 3. Check if already shown
+    final prefs = await SharedPreferences.getInstance();
+    final bool shown = prefs.getBool('special_offer_shown') ?? false;
+    if (shown) return;
+
+    if (!mounted) return;
+
+    // Show Dialog
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const SpecialOfferDialog(),
+    );
+
+    // Mark as shown
+    await prefs.setBool('special_offer_shown', true);
   }
 
   void _navigateToResult() {
@@ -809,14 +880,6 @@ class _QuizPageState extends State<QuizPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black54),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
       extendBodyBehindAppBar: true, 
       body: Column(
         children: [
@@ -831,38 +894,48 @@ class _QuizPageState extends State<QuizPage> {
                     Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                          child: Column(
+                          padding: const EdgeInsets.fromLTRB(8.0, 8.0, 24.0, 8.0),
+                          child: Row(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "第$_currentIndex問",
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    "$_currentIndex / ${widget.totalQuestions}",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black54, size: 20),
+                                onPressed: () => Navigator.of(context).pop(),
                               ),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: _currentIndex / widget.totalQuestions,
-                                  minHeight: 8,
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "第$_currentIndex問",
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        Text(
+                                          "$_currentIndex / ${widget.totalQuestions}",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: _currentIndex / widget.totalQuestions,
+                                        minHeight: 6,
+                                        backgroundColor: Colors.grey[200],
+                                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -953,7 +1026,7 @@ class _QuizPageState extends State<QuizPage> {
 
     return Container(
       key: ValueKey(cardIndex),
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,

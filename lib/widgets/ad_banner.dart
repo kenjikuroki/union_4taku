@@ -1,4 +1,4 @@
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../utils/ad_manager.dart';
@@ -25,7 +25,16 @@ class _AdBannerState extends State<AdBanner> {
   bool _isLoaded = false;
   ValueNotifier<bool>? _loadingNotifier; // To track listener for cleanup
   
-  final String _adUnitId = 'ca-app-pub-3331079517737737/7128272208';
+  String get _adUnitId {
+    if (useTestAds) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/6300978111'
+          : 'ca-app-pub-3940256099942544/2934735716';
+    }
+    return Platform.isAndroid
+        ? 'ca-app-pub-3331079517737737/4444615495'
+        : 'ca-app-pub-3331079517737737/7128272208';
+  }
   
   @override
   void initState() {

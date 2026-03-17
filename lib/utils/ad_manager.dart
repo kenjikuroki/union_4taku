@@ -1,6 +1,11 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'purchase_manager.dart';
+
+// --- テスト広告・本番広告 切り替えフラグ ---
+// 本番移行時にここを false にすると、すべての広告が本番用IDに切り替わります。
+const bool useTestAds = true;
 
 class PreloadedAd {
   final BannerAd ad;
@@ -20,10 +25,16 @@ class AdManager {
 
   final Map<String, PreloadedAd> _ads = {};
 
-  final String _adUnitId = 'ca-app-pub-3331079517737737/6823059991';
-  
-  // Test ID for debug (optional use)
-  // final String _testAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  String get _adUnitId {
+    if (useTestAds) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/6300978111'
+          : 'ca-app-pub-3940256099942544/2934735716';
+    }
+    return Platform.isAndroid 
+        ? 'ca-app-pub-3331079517737737/4444615495' 
+        : 'ca-app-pub-3331079517737737/6823059991';
+  }
 
   void preloadAd(String key) {
     if (PurchaseManager.instance.isPremium) return;
@@ -32,9 +43,6 @@ class AdManager {
       return;
     }
 
-    // Always use the real ID as requested by user, 
-    // or switch to test ID if strictly debugging.
-    // final unitId = kDebugMode ? _testAdUnitId : _adUnitId;
     final unitId = _adUnitId;
 
     final ad = BannerAd(
@@ -77,8 +85,16 @@ class AdManager {
   // Interstitial Ad
   InterstitialAd? _interstitialAd;
   
-  // Real ID from user screenshot
-  final String _interstitialAdUnitId = 'ca-app-pub-3331079517737737/7531644610';
+  String get _interstitialAdUnitId {
+    if (useTestAds) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/1033173712'
+          : 'ca-app-pub-3940256099942544/4411468910';
+    }
+    return Platform.isAndroid
+        ? 'ca-app-pub-3331079517737737/8231671474'
+        : 'ca-app-pub-3331079517737737/7531644610';
+  }
 
   void preloadInterstitial() {
     if (PurchaseManager.instance.isPremium) return;

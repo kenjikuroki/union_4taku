@@ -1,0 +1,38 @@
+{
+  "@@locale": "ja",
+  "appTitle": "運行管理者 貨物 4択問題",
+  "appSubtitle": "スキマ時間でサクサク合格！4択問題",
+  "part1": "貨物自動車運送事業法",
+  "part2": "道路運送車両法",
+  "part3": "道路交通法",
+  "part4": "労働基準法",
+  "part5": "実務上の知識及び能力",
+  "reviewWeakness": "苦手を復習する",
+  "questionsCount": "{count}問",
+  "@questionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allCategories": "全カテゴリー",
+  "shuffleMode": "シャッフル",
+  "sequentialMode": "順番通り",
+  "premiumUpgrade": "プレミアムアップグレード",
+  "sequentialModeFeature": "「連続」モードの解放",
+  "sequentialModeDesc": "1問目から順番にすべての問題を解くことができます。",
+  "adFreeFeature": "広告を完全に非表示",
+  "adFreeDesc": "アプリ内のあらゆる広告（バナー、動画など）を非表示にします。",
+  "categoryReviewFeature": "カテゴリー別の弱点復習機能",
+  "categoryReviewDesc": "苦手な問題をパートごとに絞って、効率よく復習できます。",
+  "buyNow": "購入する",
+  "cancel": "キャンセル",
+  "selectCategory": "カテゴリーを選択",
+  "restorePurchase": "購入を復元する",
+  "sisterAppTitle": "サクサク解ける\n姉妹アプリはこちら",
+  "sisterAppSubtitle": "スワイプ形式で高速学習",
+  "reviewMistakes": "ミスを確認",
+  "backToHome": "ホームに戻る",
+  "retry": "リトライ"
+}

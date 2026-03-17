@@ -1,0 +1,38 @@
+{
+  "@@locale": "en",
+  "appTitle": "Transport Manager Cargo Quiz",
+  "appSubtitle": "Pass quickly in your spare time!",
+  "part1": "Freight Transport Business Law",
+  "part2": "Road Transport Vehicle Law",
+  "part3": "Road Traffic Law",
+  "part4": "Labor Standards Law",
+  "part5": "Practical Knowledge and Ability",
+  "reviewWeakness": "Review Weakness",
+  "questionsCount": "{count} questions",
+  "@questionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allCategories": "All Categories",
+  "shuffleMode": "Shuffle",
+  "sequentialMode": "Sequential",
+  "premiumUpgrade": "Premium Upgrade",
+  "sequentialModeFeature": "Unlock Sequential Mode",
+  "sequentialModeDesc": "Solve all questions in order from the first one.",
+  "adFreeFeature": "Completely Remove Ads",
+  "adFreeDesc": "Hide all ads in the app (banners, videos, etc.)",
+  "categoryReviewFeature": "Category Weakness Review",
+  "categoryReviewDesc": "Filter and review weak questions by part efficiently.",
+  "buyNow": "Purchase",
+  "cancel": "Cancel",
+  "selectCategory": "Select Category",
+  "restorePurchase": "Restore Purchases",
+  "sisterAppTitle": "Speed learning with\nsister app",
+  "sisterAppSubtitle": "Swipe format learning",
+  "reviewMistakes": "Review Mistakes",
+  "backToHome": "Back to Home",
+  "retry": "Retry"
+}

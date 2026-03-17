@@ -9,12 +9,16 @@ import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'widgets/ad_banner.dart';
-import 'widgets/ad_banner.dart';
 import 'utils/ad_manager.dart';
 import 'utils/purchase_manager.dart';
 import 'widgets/premium_unlock_card.dart';
 import 'widgets/special_offer_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
+import 'widgets/mode_toggle.dart';
+import 'widgets/premium_dialog.dart';
+import 'widgets/category_review_modal.dart';
 
 
 Future<void> main() async {
@@ -182,6 +186,16 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '運行管理者 貨物',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ja', ''),
+        Locale('en', ''),
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF192A56)),
         useMaterial3: true,
@@ -211,6 +225,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _weaknessCount = 0;
   bool _isLoading = true;
+  QuizMode _currentMode = QuizMode.shuffle;
 
   @override
   void initState() {
@@ -245,24 +260,25 @@ class _HomePageState extends State<HomePage> {
   }
   
   Future<void> _loadUserData() async {
-    final weakList = await PrefsHelper.getWeakQuestions();
+    final weakTexts = await PrefsHelper.getWeakQuestions();
+    final validWeakQuizzes = QuizData.getQuizzesFromTexts(weakTexts);
     if (mounted) {
       setState(() {
-        _weaknessCount = weakList.length;
+        _weaknessCount = validWeakQuizzes.length;
       });
     }
   }
 
-  void _startQuiz(BuildContext context, List<Quiz> quizList, String categoryKey, {bool isRandom10 = true}) async {
+  void _startQuiz(BuildContext context, List<Quiz> quizList, String categoryKey) async {
     List<Quiz> questionsToUse = List<Quiz>.from(quizList);
     
-    if (isRandom10) {
+    if (_currentMode == QuizMode.shuffle) {
       questionsToUse.shuffle();
       if (questionsToUse.length > 10) {
         questionsToUse = questionsToUse.take(10).toList();
       }
     } else {
-      questionsToUse.shuffle();
+      // Sequential mode: Just keep the data order
     }
     
     AdManager.instance.preloadAd('result');
@@ -273,7 +289,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context) => QuizPage(
           quizzes: questionsToUse,
           categoryKey: categoryKey,
-          totalQuestions: isRandom10 ? 10 : questionsToUse.length,
+          totalQuestions: questionsToUse.length,
         ),
       ),
     );
@@ -281,28 +297,90 @@ class _HomePageState extends State<HomePage> {
     _loadUserData();
   }
 
-  void _startWeaknessReview(BuildContext context) async {
-    final navigator = Navigator.of(context);
+  void _onCategoryReviewSelected(BuildContext context) async {
     final weakTexts = await PrefsHelper.getWeakQuestions();
     if (!mounted) return;
     if (weakTexts.isEmpty) return;
 
-    final weakQuizzes = QuizData.getQuizzesFromTexts(weakTexts);
-    
-    AdManager.instance.preloadAd('result');
-    AdManager.instance.preloadInterstitial();
+    final allWeakQuizzes = QuizData.getQuizzesFromTexts(weakTexts);
+    final l10n = AppLocalizations.of(context)!;
 
-    await navigator.push(
-      MaterialPageRoute(
-        builder: (context) => QuizPage(
-          quizzes: weakQuizzes,
-          isWeaknessReview: true,
-          totalQuestions: weakQuizzes.length,
-        ),
-      ),
-    );
+    final partInfo = {
+      'part1': {'title': l10n.part1, 'icon': Icons.local_shipping},
+      'part2': {'title': l10n.part2, 'icon': Icons.build},
+      'part3': {'title': l10n.part3, 'icon': Icons.traffic},
+      'part4': {'title': l10n.part4, 'icon': Icons.work_history},
+      'part5': {'title': l10n.part5, 'icon': Icons.map},
+    };
+
+    final List<Map<String, dynamic>> categories = [];
+    
+    // Add "All Categories" option at the top
+    categories.add({
+      'key': 'all',
+      'title': l10n.allCategories,
+      'icon': Icons.all_inbox,
+      'count': allWeakQuizzes.length,
+    });
+    
+    // Part-specific counts
+    for (var entry in partInfo.entries) {
+      final partKey = entry.key;
+      List<Quiz> quizzes;
+      switch(partKey) {
+        case 'part1': quizzes = QuizData.part1; break;
+        case 'part2': quizzes = QuizData.part2; break;
+        case 'part3': quizzes = QuizData.part3; break;
+        case 'part4': quizzes = QuizData.part4; break;
+        case 'part5': quizzes = QuizData.part5; break;
+        default: quizzes = [];
+      }
+      
+      final partWeakQuizzes = quizzes.where((q) => weakTexts.contains(q.question)).toList();
+      if (partWeakQuizzes.isNotEmpty) {
+        if (!mounted) return;
+        categories.add({
+          'key': partKey,
+          'title': entry.value['title'],
+          'icon': entry.value['icon'],
+          'count': partWeakQuizzes.length,
+        });
+      }
+    }
+
     if (!mounted) return;
-    _loadUserData();
+    
+    CategoryReviewModal.show(
+      context,
+      categories: categories,
+      onCategorySelected: (key) {
+        List<Quiz> finalWeakQuizzes;
+        if (key == 'all') {
+          finalWeakQuizzes = allWeakQuizzes;
+        } else {
+          List<Quiz> partQuizzes;
+          switch(key) {
+            case 'part1': partQuizzes = QuizData.part1; break;
+            case 'part2': partQuizzes = QuizData.part2; break;
+            case 'part3': partQuizzes = QuizData.part3; break;
+            case 'part4': partQuizzes = QuizData.part4; break;
+            case 'part5': partQuizzes = QuizData.part5; break;
+            default: partQuizzes = [];
+          }
+          finalWeakQuizzes = partQuizzes.where((q) => weakTexts.contains(q.question)).toList();
+        }
+        
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => QuizPage(
+              quizzes: finalWeakQuizzes,
+              isWeaknessReview: true,
+              totalQuestions: finalWeakQuizzes.length,
+            ),
+          ),
+        ).then((_) => _loadUserData());
+      },
+    );
   }
 
   void _startQuizByCategory(BuildContext context, String partKey) {
@@ -384,11 +462,13 @@ class _HomePageState extends State<HomePage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "運行管理者 貨物 4択問題",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.appTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -396,27 +476,37 @@ class _HomePageState extends State<HomePage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 10),
-                  const Text(
-                    "スキマ時間でサクサク合格！4択問題",
+                  Center(
+                    child: ModeToggle(
+                      currentMode: _currentMode,
+                      onModeChanged: (mode) {
+                        setState(() {
+                          _currentMode = mode;
+                        });
+                      },
+                      onLockTapped: () => PremiumDialog.show(context),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l10n.appSubtitle,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Colors.grey,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 20),
-
+                  const SizedBox(height: 16),
 
 
                   // Part 1: 貨物自動車運送事業法
                   _MenuButton(
-                    title: "貨物自動車運送事業法",
+                    title: l10n.part1,
                     icon: Icons.local_shipping,
                     iconColor: Colors.blueAccent,
                     onTap: () => _startQuizByCategory(context, 'part1'),
@@ -425,7 +515,7 @@ class _HomePageState extends State<HomePage> {
 
                   // Part 2: 道路運送車両法
                   _MenuButton(
-                    title: "道路運送車両法",
+                    title: l10n.part2,
                     icon: Icons.build,
                     iconColor: Colors.orange,
                     onTap: () => _startQuizByCategory(context, 'part2'),
@@ -434,7 +524,7 @@ class _HomePageState extends State<HomePage> {
 
                   // Part 3: 道路交通法
                   _MenuButton(
-                    title: "道路交通法",
+                    title: l10n.part3,
                     icon: Icons.traffic,
                     iconColor: Colors.redAccent,
                     onTap: () => _startQuizByCategory(context, 'part3'),
@@ -443,7 +533,7 @@ class _HomePageState extends State<HomePage> {
 
                   // Part 4: 労働基準法
                   _MenuButton(
-                    title: "労働基準法",
+                    title: l10n.part4,
                     icon: Icons.work_history,
                     iconColor: Colors.green,
                     onTap: () => _startQuizByCategory(context, 'part4'),
@@ -452,7 +542,7 @@ class _HomePageState extends State<HomePage> {
 
                   // Part 5: 実務上の知識及び能力
                   _MenuButton(
-                    title: "実務上の知識及び能力",
+                    title: l10n.part5,
                     icon: Icons.map,
                     iconColor: Colors.purple,
                     onTap: () => _startQuizByCategory(context, 'part5'),
@@ -461,9 +551,9 @@ class _HomePageState extends State<HomePage> {
 
                   // Weakness Review
                   ElevatedButton.icon(
-                    onPressed: _weaknessCount > 0 ? () => _startWeaknessReview(context) : null,
+                    onPressed: _weaknessCount > 0 ? () => _onCategoryReviewSelected(context) : null,
                     icon: const Icon(Icons.refresh),
-                    label: Text("苦手を復習する ($_weaknessCount問)"),
+                    label: Text("${l10n.reviewWeakness} (${l10n.questionsCount(_weaknessCount)})"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
                       foregroundColor: Colors.white,
@@ -475,7 +565,7 @@ class _HomePageState extends State<HomePage> {
                       textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   
                   // Sister App Referral Card
                   ValueListenableBuilder<bool>(
@@ -514,22 +604,22 @@ class _HomePageState extends State<HomePage> {
                                     child: const Icon(Icons.touch_app, color: Colors.blueAccent, size: 32),
                                   ),
                                   const SizedBox(width: 16),
-                                  const Expanded(
+                                  Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          "スワイプ形式で高速学習",
-                                          style: TextStyle(
+                                          l10n.sisterAppSubtitle,
+                                          style: const TextStyle(
                                             fontSize: 14,
                                             color: Colors.grey,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        SizedBox(height: 4),
+                                        const SizedBox(height: 4),
                                         Text(
-                                          "サクサク解ける\n姉妹アプリはこちら",
-                                          style: TextStyle(
+                                          l10n.sisterAppTitle,
+                                          style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black87,
@@ -548,7 +638,7 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Premium Card & Restore Button
                   ValueListenableBuilder<bool>(
@@ -562,9 +652,9 @@ class _HomePageState extends State<HomePage> {
                             onPressed: () async {
                               await PurchaseManager.instance.restorePurchases();
                             },
-                            child: const Text(
-                              "購入を復元する",
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            child: Text(
+                              l10n.restorePurchase,
+                              style: const TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -578,7 +668,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           
-
         ],
       ),
     );
@@ -1267,6 +1356,7 @@ class ResultPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     String messageText = "";
     Color messageColor = Colors.black;
 
@@ -1451,7 +1541,7 @@ class ResultPage extends StatelessWidget {
                                 );
                               },
                               icon: const Icon(Icons.refresh),
-                              label: const Text("ミスを確認"),
+                              label: Text(l10n.reviewMistakes),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
                                 foregroundColor: Colors.white,
@@ -1498,7 +1588,7 @@ class ResultPage extends StatelessWidget {
                               textStyle: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
-                            child: Text(isWeaknessReview ? "ホームに戻る" : "リトライ"),
+                            child: Text(isWeaknessReview ? l10n.backToHome : l10n.retry),
                           ),
                         ),
                       ),
@@ -1509,8 +1599,8 @@ class ResultPage extends StatelessWidget {
                     onPressed: () {
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     },
-                    child: const Text(
-                      "ホームに戻る",
+                    child: Text(
+                      l10n.backToHome,
                       style: TextStyle(color: Colors.grey),
                     ),
                   ),
